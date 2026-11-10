@@ -3,114 +3,61 @@ package mx.unison.pong;
 
 import java.awt.geom.Ellipse2D;
 
-public class BallRunner implements Runnable {
+public class BallRunner {
 
-    public static final int MAX_X = 640;
-    public static final int MAX_Y = 480;
-    public static final int SIGN = -1;
+    private static final int MAX_X = 640;
+    private static final int MAX_Y = 480;
 
-    public static final int DX = 20;
-    public static final int DY = 20;
+    private static final int DX = 5;
+    private static final int DY = 5;
 
-    private final Ellipse2D.Double ball;
-    private final Paddle paddle;
+    private Ellipse2D.Double ball;
+    private Paddle paddle;
 
-    private int ballX;
-    private int ballY;
+    private int directionX = DX;
+    private int directionY = DY;
 
-    private boolean isPaused;
-    private volatile boolean stop = false;
+    private boolean stopped = false;
 
-    private final Object pauseLock = new Object();
-
-    public BallRunner(Ellipse2D.Double shape, Paddle p) {
-        ball = shape;
-        paddle = p;
-
-        ballX = 320;
-        ballY = 240;
-
-        ball.x = ballX;
-        ball.y = ballY;
-
-        isPaused = false;
+    public BallRunner(Ellipse2D.Double ball, Paddle paddle) {
+        this.ball = ball;
+        this.paddle = paddle;
     }
 
-    public void pause() {
-        synchronized (pauseLock) {
-            isPaused = true;
+    public void update() {
+
+        if (stopped) {
+            return;
         }
-    }
 
-    public void resume() {
-        synchronized (pauseLock) {
-            isPaused = false;
-            pauseLock.notifyAll();
+        ball.x += directionX;
+        ball.y += directionY;
+
+        // Colisión con los lados
+        if (ball.x <= 0 || ball.x + ball.width >= MAX_X) {
+            directionX = -directionX;
         }
-    }
 
-    @Override
-    public void run() {
+        // Colisión con la parte superior
+        if (ball.y <= 0) {
+            directionY = -directionY;
+        }
 
-        int directionY = 1;
-        int directionX = 1;
+        // Colisión con la paleta
+        if (paddle.intersects(ball)) {
+            directionY = -Math.abs(directionY);
+        }
 
-        while (!stop) {
-
-            synchronized (pauseLock) {
-                while (isPaused && !stop) {
-                    try {
-                        pauseLock.wait();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        stop = true;
-                    }
-                }
-            }
-
-            if (stop) {
-                break;
-            }
-
-            if (paddle.intersects(ball)) {
-                directionY = directionY * SIGN;
-            }
-
-            if (ball.getMinY() < 0) {
-                directionY = directionY * SIGN;
-            }
-
-            if (ball.getMinX() < 0) {
-                directionX = directionX * SIGN;
-            }
-
-            if (ball.getMaxY() > MAX_Y) {
-                directionY = directionY * SIGN;
-            }
-
-            if (ball.getMaxX() > MAX_X) {
-                directionX = directionX * SIGN;
-            }
-
-            ballX = ballX + (DX * directionX);
-            ballY = ballY + (DY * directionY);
-
-            ball.x = ballX;
-            ball.y = ballY;
-
-            try {
-                Thread.sleep(150L);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                stop = true;
-            }
+        // Si la pelota llega al fondo
+        if (ball.y + ball.height >= MAX_Y) {
+            ball.x = 20;
+            ball.y = 320;
+            directionX = DX;
+            directionY = DY;
         }
     }
 
     public void stop() {
-        synchronized (pauseLock) {
-            stop = true;
-            pauseLock.notifyAll();
-        }
+        stopped = true;
     }
 }
