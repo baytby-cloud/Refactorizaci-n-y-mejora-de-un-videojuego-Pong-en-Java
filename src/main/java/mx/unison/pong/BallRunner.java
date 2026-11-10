@@ -1,3 +1,4 @@
+
 package mx.unison.pong;
 
 import java.awt.geom.Ellipse2D;
@@ -10,88 +11,106 @@ public class BallRunner implements Runnable {
 
     public static final int DX = 20;
     public static final int DY = 20;
-    private final  Ellipse2D.Double ball;
 
+    private final Ellipse2D.Double ball;
     private final Paddle paddle;
 
     private int ballX;
     private int ballY;
 
-    private boolean isPaused ;
-    private boolean stop = false ;
+    private boolean isPaused;
+    private volatile boolean stop = false;
 
-    public BallRunner( Ellipse2D.Double shape, Paddle p) {
-        super();
-        ball =  shape;
+    private final Object pauseLock = new Object();
+
+    public BallRunner(Ellipse2D.Double shape, Paddle p) {
+        ball = shape;
         paddle = p;
+
         ballX = 320;
         ballY = 240;
-        ball.x = ballX ;
+
+        ball.x = ballX;
         ball.y = ballY;
+
         isPaused = false;
     }
 
     public void pause() {
-        isPaused = true;
+        synchronized (pauseLock) {
+            isPaused = true;
+        }
     }
 
     public void resume() {
-        isPaused = false;
+        synchronized (pauseLock) {
+            isPaused = false;
+            pauseLock.notifyAll();
+        }
     }
 
     @Override
     public void run() {
+
         int directionY = 1;
         int directionX = 1;
 
-        while( !stop ) {
+        while (!stop) {
 
-            if( isPaused ) {
-               Thread.yield();
-               continue;
+            synchronized (pauseLock) {
+                while (isPaused && !stop) {
+                    try {
+                        pauseLock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        stop = true;
+                    }
+                }
             }
 
-           // int y = (int) ball.getMaxY();
-           // int x = (int)  ball.getX();
-
-            if( paddle.intersects(ball) ) {
-                directionY = directionY * SIGN;
-               // sX = sX * SIGN;
-                ballX = ballX + (DX * directionX) ;
-                ballY = ballY + (DY * directionY);
-                ball.x = ballX ;
-                ball.y = ballY;
-                continue;
+            if (stop) {
+                break;
             }
 
-            if( ball.getMinY() < 0 ) {
+            if (paddle.intersects(ball)) {
                 directionY = directionY * SIGN;
             }
 
-            if( ball.getMinX() < 0 ) {
+            if (ball.getMinY() < 0) {
+                directionY = directionY * SIGN;
+            }
+
+            if (ball.getMinX() < 0) {
                 directionX = directionX * SIGN;
             }
-            if( ball.getMaxY() > MAX_Y ) {
+
+            if (ball.getMaxY() > MAX_Y) {
                 directionY = directionY * SIGN;
             }
 
-            if( ball.getMaxX() > MAX_X ) {
+            if (ball.getMaxX() > MAX_X) {
                 directionX = directionX * SIGN;
             }
-            ballX = ballX + (DX * directionX) ;
+
+            ballX = ballX + (DX * directionX);
             ballY = ballY + (DY * directionY);
-            ball.x = ballX ;
+
+            ball.x = ballX;
             ball.y = ballY;
+
             try {
                 Thread.sleep(150L);
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                Thread.currentThread().interrupt();
+                stop = true;
             }
         }
     }
 
     public void stop() {
-        stop = true;
+        synchronized (pauseLock) {
+            stop = true;
+            pauseLock.notifyAll();
+        }
     }
-
 }
