@@ -23,15 +23,17 @@ public class Paddle {
     }
 
     public void moveRight() {
-        if (paddle.x + WIDTH < BOARD_WIDTH) {
-            paddle.x += WIDTH;
-        }
+        paddle.x = Math.min(
+                paddle.x + WIDTH,
+                BOARD_WIDTH - WIDTH
+        );
     }
 
     public void moveLeft() {
-        if (paddle.x > 0) {
-            paddle.x -= WIDTH;
-        }
+        paddle.x = Math.max(
+                paddle.x - WIDTH,
+                0
+        );
     }
 
     public Rectangle2D.Double getPaddle() {
