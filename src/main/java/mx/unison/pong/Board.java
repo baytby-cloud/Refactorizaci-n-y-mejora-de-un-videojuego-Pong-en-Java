@@ -3,11 +3,10 @@ package mx.unison.pong;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import java.awt.event.ActionEvent;
 import java.awt.geom.Ellipse2D;
 
-public class Board extends JComponent implements KeyListener {
+public class Board extends JComponent {
 
     private Dimension preferredSize = null;
     private Ellipse2D.Double ball;
@@ -29,6 +28,8 @@ public class Board extends JComponent implements KeyListener {
         paddle = new Paddle();
         ballRunner = new BallRunner(ball, paddle);
 
+        configureKeyBindings();
+
         gameTimer = new Timer(16, e -> {
             if (!isPaused) {
                 ballRunner.update();
@@ -39,17 +40,61 @@ public class Board extends JComponent implements KeyListener {
         gameTimer.start();
     }
 
+    private void configureKeyBindings() {
+
+        InputMap inputMap = getInputMap(WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = getActionMap();
+
+        inputMap.put(KeyStroke.getKeyStroke("LEFT"), "moveLeft");
+        inputMap.put(KeyStroke.getKeyStroke("RIGHT"), "moveRight");
+        inputMap.put(KeyStroke.getKeyStroke("SPACE"), "pause");
+        inputMap.put(KeyStroke.getKeyStroke("R"), "resume");
+
+        actionMap.put("moveLeft", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!isPaused) {
+                    paddle.moveLeft();
+                    repaint();
+                }
+            }
+        });
+
+        actionMap.put("moveRight", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!isPaused) {
+                    paddle.moveRight();
+                    repaint();
+                }
+            }
+        });
+
+        actionMap.put("pause", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                isPaused = true;
+                repaint();
+            }
+        });
+
+        actionMap.put("resume", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                isPaused = false;
+                repaint();
+            }
+        });
+    }
+
     @Override
     protected void paintComponent(Graphics graphicsContext) {
         super.paintComponent(graphicsContext);
 
         Graphics2D g = (Graphics2D) graphicsContext;
 
-        if (isOpaque()) {
-            g.setColor(getBackground());
-            g.fillRect(0, 0, getWidth(), getHeight());
-            g.setColor(getForeground());
-        }
+        g.setColor(getBackground());
+        g.fillRect(0, 0, getWidth(), getHeight());
 
         if (isPaused) {
             g.setFont(theFont);
@@ -83,38 +128,5 @@ public class Board extends JComponent implements KeyListener {
     public void stopGame() {
         gameTimer.stop();
         ballRunner.stop();
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e) {
-    }
-
-    @Override
-    public void keyPressed(KeyEvent e) {
-        switch (e.getKeyCode()) {
-            case KeyEvent.VK_LEFT:
-                if (!isPaused) {
-                    paddle.moveLeft();
-                }
-                break;
-
-            case KeyEvent.VK_RIGHT:
-                if (!isPaused) {
-                    paddle.moveRight();
-                }
-                break;
-
-            case KeyEvent.VK_SPACE:
-                isPaused = true;
-                break;
-
-            case KeyEvent.VK_R:
-                isPaused = false;
-                break;
-        }
-    }
-
-    @Override
-    public void keyReleased(KeyEvent e) {
     }
 }
